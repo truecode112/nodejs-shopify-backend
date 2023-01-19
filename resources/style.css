@@ -1,0 +1,15 @@
+.sekanson-banner {
+    display: flex;
+    flex-direction: column;
+    width: 100vw;
+    height: 100vh;
+    position: static;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    background-color: red
+}
+
+.sekanson-banner > #sekanson-cta-text {
+    font-family: lato,sans-serif;
+}
