@@ -11,7 +11,7 @@ import voucher_codes from 'voucher-code-generator';
 import { ThirdwebSDK } from "@thirdweb-dev/sdk";
 
 import express from 'express';
-import Discount from '../models/discount.js';
+import { getDiscountCount, saveNewDiscount } from '../models/discount.js';
 
 var discount_router = express.Router();
 
@@ -49,16 +49,12 @@ discount_router.post('/', async (req, res) => {
         var wallet_address = req.body.wallet_address;
         var chain_id = req.body.chain_id;
 
-        const current_discount_count = await Discount.find({ walletAddress : wallet_address}).count();
-        /*if (current_discount_count > 2) {
-          return res.status(200).json({error: "Exceed limit count", message: "", discount_code: ""}); 
-        }*/
-        
-        const sdk = new ThirdwebSDK(chain_id);
-    
-        const edition = await sdk.getContract(NFT_COLLECTION_ADDRESS, "nft-collection");
-        console.log(wallet_address);
+        var discount_count = await getDiscountCount(wallet_address);
+        console.log('Current discount code count', discount_count);
 
+        const sdk = new ThirdwebSDK(chain_id);
+  
+        const edition = await sdk.getContract(NFT_COLLECTION_ADDRESS, "nft-collection");
         const balance = await edition.balanceOf(wallet_address);
     
         if (balance.eq(0)) {
@@ -87,24 +83,16 @@ discount_router.post('/', async (req, res) => {
           });
         
         console.log('discount_code', response.body.discount_code.code);
-        let newDiscount = new Discount({
-          walletAddress: wallet_address,
-          discount : response.body.discount_code.code
-        })
-        newDiscount = await newDiscount.save();
-        if (!newDiscount)
-          return res.status(401).json({error: "Create discount failed", message: "", discount_code: ""});
-
+        var insertId = saveNewDiscount(wallet_address, response.body.discount_code.code);
         return res
             .status(200)
             .json({error: null, message: "Discount code " + response.body.discount_code.code + " is applied!", discount_code: response.body.discount_code.code});
     } catch (e) {
         console.log(e);
         return res
-            .status(401)
-            .json({error: "401 Unauthorized", message: null, discount_code: null});
+            .status(500)
+            .json({error: "500 Internal Server Error", message: null, discount_code: null});
     }
-    
 });
 
 export default discount_router;
