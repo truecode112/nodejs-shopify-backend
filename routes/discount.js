@@ -81,7 +81,7 @@ discount_router.post('/', async (req, res) => {
             data: {
               discount_code: {
                 code: new_discount_code[0],
-                usage_count: 3,
+                usage_count: 1,
               },
             },
           });
