@@ -97,7 +97,8 @@ function refreshBanner(timeout = 3000) {
   setTimeout(() => {
     var currentDiscountCode = getCookie('CurDiscountCode');
     if (currentDiscountCode == null) {
-      setBannerText('Get Discount for NFT holders', false);
+      var ctaText = getCookie('curCtaText')
+      setBannerText(ctaText, false);
     } else {
       var currentMessage = getCookie('CurDiscountCodeMessage');
       setBannerText(currentMessage, true);
@@ -106,15 +107,17 @@ function refreshBanner(timeout = 3000) {
 }
 
 async function callHolder() {
+  var data_plugin_id = document.querySelector('script[data-styles][data-plugin-id]').getAttribute('data-plugin-id');
+  var data_network = document.querySelector('script[data-styles][data-plugin-id]').getAttribute('data-network');
   var sendInfo = {
     wallet_address: globalAccount,
-    chain_id: "mainnet"
+    chain_id: data_network,
+    uid: data_plugin_id
   };
 
   $.ajax({
     type: "POST",
-    //url: "http://95.217.102.97:2389/api/discount",
-    url: "http://localhost:2389/api/discount",
+    url: "http://95.217.102.97/api/discount",
     headers:{         
       'Content-Type' : 'application/json',
     },
@@ -130,6 +133,11 @@ async function callHolder() {
       } else {
         console.log(data.error);
       }
+      refreshBanner();
+    },
+    error: function(err) {
+      eraseCookie('CurDiscountCode');
+      eraseCookie('CurDiscountCodeMessage');
       refreshBanner();
     },
     data: JSON.stringify(sendInfo)

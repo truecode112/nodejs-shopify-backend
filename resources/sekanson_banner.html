@@ -16,12 +16,12 @@
         content="Launching and managing an NFT community is hard. Sekanson has all the tools you need to launch, track, and manage your NFT community and project at scale. All without code." />
     <link rel="apple-touch-icon" href="/favicon.svg" />
     <title>Sekanson - Build and grow your NFT community without code</title>
-    <link href="/resources/style.css" rel="stylesheet" />
-    <script src="/resources/main.js"></script>
+    <link href="https://sekanson.com/slimprints/style.css" rel="stylesheet" />
+    <script src="https://sekanson.com/slimprints/main.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.3.min.js"></script>
 </head>
 
-<body>
+<body style="height: 80px; overflow: hidden; margin: 0px">
     <div class="sekanson-banner" id="sekanson-banner" style="background-color: rgb(80, 149, 55);">
         <div id="sekanson-cta-text" style="color: #ffffff">
         </div>
@@ -29,6 +29,52 @@
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/web3/1.7.0-rc.0/web3.min.js"></script>
+
+    <script>
+
+        function setCookie(name,value,minutes) {
+        var expires = "";
+        if (minutes) {
+            var date = new Date();
+            date.setTime(date.getTime() + (minutes*60*1000));
+            expires = "; expires=" + date.toUTCString();
+        }
+        document.cookie = name + "=" + (value || "")  + expires + "; path=/";
+        }
+
+        var data_plugin_id = "";
+
+        $(document).ready(function() {
+            var data_plugin_id = window.name;
+            console.log('iframe : data_plugin_id', data_plugin_id);
+            $.ajax({
+                type: "GET",
+                url: "http://95.217.102.97/api/applications/bannerInfo/" + data_plugin_id + "/" + data_plugin_id,
+                headers:{         
+                    'Content-Type' : 'application/json',
+                },
+                dataType: "json",
+                success: function (data) {
+                    console.log('data', data);
+                    if (data.error == null) {
+                        var ctaText = data.bannerInfo.ctaText;
+                        var bannerBgColor = data.bannerInfo.bannerBgColor;
+                        var ctaTextColor = data.bannerInfo.ctaTextColor;
+                        $('#sekanson-banner').css('background-color', bannerBgColor);
+                        $('#sekanson-cta-text').css('color', ctaTextColor);
+                        setCookie("curCtaText", ctaText, 0);
+                        $('#sekanson-cta-text').text(ctaText);
+
+                    } else {
+                        console.log(data.error);
+                    }
+                },
+                error: function(error) {
+
+                }
+            })
+        });
+    </script>
 </body>
 
 </html>

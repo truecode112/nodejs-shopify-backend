@@ -12,6 +12,7 @@ import { ThirdwebSDK } from "@thirdweb-dev/sdk";
 
 import express from 'express';
 import { getDiscountCount, saveNewDiscount } from '../models/discount.js';
+import { getApplicationsByUid } from '../models/application.js';
 
 var discount_router = express.Router();
 
@@ -23,38 +24,58 @@ const SHOPIFY_API_KEY = process.env.SHOPIFY_API_KEY;
 const SHOPIFY_API_SECRET_KEY = process.env.SHOPIFY_API_SECRET_KEY;
 const SHOPIFY_API_SCOPES = process.env.SHOPIFY_API_SCOPES;
 
-  const session = new Session({
-    id: 'session-id',
-    shop: 'slimprints.myshopify.com',
-    state: 'state1234',
-    isOnline: true,
-    accessToken: SHOPIFY_ACCESS_TOKEN,
-  });
-
-  console.log(SHOPIFY_API_KEY);
-
-  const shopify = shopifyApi({
-    apiKey: SHOPIFY_API_KEY,
-    apiSecretKey: SHOPIFY_API_SECRET_KEY,
-    scopes: SHOPIFY_API_SCOPES,
-    hostName: '95.217.102.97:3000',
-    apiVersion: ApiVersion.October22,
-    isEmbeddedApp: true,
-  });
-
 discount_router.post('/', async (req, res) => {
     try {
         console.log('discount_router', req.body);
 
         var wallet_address = req.body.wallet_address;
         var chain_id = req.body.chain_id;
+        var uid = req.body.uid;
 
         var discount_count = await getDiscountCount(wallet_address);
         console.log('Current discount code count', discount_count);
 
+        var appInfo = await getApplicationsByUid(wallet_address, uid);
+        console.log(appInfo);
+        if (appInfo === null || appInfo === undefined) {
+          return res.status(200).json({error: "Invalid plugin configuration", message: "", discount_code: ""});
+        }
+
+        if (chain_id == "ethereum" && (appInfo.productContractAddress === null || appInfo.productContractAddress === "")) {
+          return res.status(200).json({error: "No valid mainnet contract address", message: "", discount_code: ""});
+        }
+
+        if (chain_id == "goerli" && (appInfo.testnetContractAddress === null || appInfo.testnetContractAddress === "")) {
+          return res.status(200).json({error: "No valid testnet contract address", message: "", discount_code: ""});
+        }
+
+        var validContractAddress = "";
+        if (chain_id === "ethereum") {
+          validContractAddress = appInfo.productContractAddress;
+        } else {
+          validContractAddress = appInfo.testnetContractAddress;
+        }
+
+        const session = new Session({
+          id: 'session-id',
+          shop: appInfo.shopURL,
+          state: 'state1234',
+          isOnline: true,
+          accessToken: appInfo.shopifyAccessToken,
+        });
+      
+        const shopify = shopifyApi({
+          apiKey: appInfo.shopifyAPIKey,
+          apiSecretKey: appInfo.shopifySecretKey,
+          scopes: appInfo.adminAccessScope,
+          hostName: '95.217.102.97',
+          apiVersion: ApiVersion.October22,
+          isEmbeddedApp: true,
+        });
+
         const sdk = new ThirdwebSDK(chain_id);
   
-        const edition = await sdk.getContract(NFT_COLLECTION_ADDRESS, "nft-collection");
+        const edition = await sdk.getContract(validContractAddress, "nft-collection");
         const balance = await edition.balanceOf(wallet_address);
     
         if (balance.eq(0)) {
@@ -73,7 +94,7 @@ discount_router.post('/', async (req, res) => {
     
         const response = await client.post({
             type: DataType.JSON,
-            path: `/admin/api/2023-01/price_rules/${SHOPIFY_DISCOUNT_ID}/discount_codes.json`,
+            path: `/admin/api/2023-01/price_rules/${appInfo.priceRuleId}/discount_codes.json`,
             data: {
               discount_code: {
                 code: new_discount_code[0],
