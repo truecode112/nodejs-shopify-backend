@@ -32,9 +32,6 @@ discount_router.post('/', async (req, res) => {
         var chain_id = req.body.chain_id;
         var uid = req.body.uid;
 
-        var discount_count = await getDiscountCount(wallet_address);
-        console.log('Current discount code count', discount_count);
-
         var appInfo = await getApplicationsByUid(wallet_address, uid);
         console.log(appInfo);
         if (appInfo === null || appInfo === undefined) {
@@ -55,10 +52,10 @@ discount_router.post('/', async (req, res) => {
         } else {
           validContractAddress = appInfo.testnetContractAddress;
         }
-
+        var shopURL = appInfo.shopURL.replace(/(^\w+:|^)\/\//, '');
         const session = new Session({
           id: 'session-id',
-          shop: appInfo.shopURL,
+          shop: shopURL,
           state: 'state1234',
           isOnline: true,
           accessToken: appInfo.shopifyAccessToken,
@@ -69,21 +66,40 @@ discount_router.post('/', async (req, res) => {
           apiSecretKey: appInfo.shopifySecretKey,
           scopes: appInfo.adminAccessScope,
           hostName: '95.217.102.97',
-          apiVersion: ApiVersion.October22,
+          apiVersion: ApiVersion.January23,
           isEmbeddedApp: true,
         });
 
         const sdk = new ThirdwebSDK(chain_id);
-  
+        
+        console.log('contract address', validContractAddress);
+        
         const edition = await sdk.getContract(validContractAddress, "nft-collection");
         const balance = await edition.balanceOf(wallet_address);
-    
+
         if (balance.eq(0)) {
             return res.status(200).json({error: "No NFT holder", message: "", discount_code: ""});
         }
 
         console.log('balance', balance);
-    
+
+        const tokenIds = await edition.getOwnedTokenIds(wallet_address);
+
+        var validTokenIdNum = -1;
+
+        for (const tokenId of tokenIds) {
+          var discount_count = await getDiscountCount(wallet_address, validContractAddress, tokenId.toNumber());
+          console.log('Current discount code count', discount_count);
+          if (discount_count === 0 || discount_count === undefined) {
+            validTokenIdNum = tokenId.toNumber();
+            break;
+          }
+        }
+        
+        if (validTokenIdNum == -1) {
+          return res.status(200).json({error: "No valid NFT for discount", message: "", discount_code: ""});
+        }
+
         const client = new shopify.clients.Rest({session});
     
         let new_discount_code = voucher_codes.generate({
@@ -104,10 +120,10 @@ discount_router.post('/', async (req, res) => {
           });
         
         console.log('discount_code', response.body.discount_code.code);
-        var insertId = saveNewDiscount(wallet_address, response.body.discount_code.code);
+        var insertId = saveNewDiscount(wallet_address, response.body.discount_code.code, response.body.discount_code.id, validContractAddress,  validTokenIdNum, Date.now());
         return res
             .status(200)
-            .json({error: null, message: "Discount code " + response.body.discount_code.code + " is applied!", discount_code: response.body.discount_code.code});
+            .json({error: null, message: "Your current discount code is " + response.body.discount_code.code, discount_code: response.body.discount_code.code});
     } catch (e) {
         console.log(e);
         return res

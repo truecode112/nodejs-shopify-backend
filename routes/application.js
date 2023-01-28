@@ -3,8 +3,11 @@ import express from 'express';
 import * as App from '../models/application.js';
 import {Session} from '@shopify/shopify-api';
 import '@shopify/shopify-api/adapters/node'
-import { shopifyApi, ApiVersion, BillingInterval, DataType } from '@shopify/shopify-api';
 import fetch from 'node-fetch';
+import { getAvalableDiscount, updateDiscountUsage, deleteDiscountCode } from '../models/discount.js';
+import { shopifyApi, ApiVersion, BillingInterval, DataType } from '@shopify/shopify-api';
+import '@shopify/shopify-api/adapters/node'
+import { getApplicationsByUid } from '../models/application.js';
 
 var app_router = express.Router();
 
@@ -121,15 +124,91 @@ app_router.patch('/:id/:uid', async(req, res) => {
     }
 });
 
-app_router.get('/bannerInfo/:id/:uid', async(req, res) => {
+app_router.post('/bannerInfo', async(req, res) => {
     try {
-        console.log('get banner info', req.params);
-       
-        var info = await App.getBannerInfo("", req.params.uid);
+        console.log('get banner info', req.body);
+        
+        var info = await App.getBannerInfo("", req.body.uid);
+        var result = {
+            error: null,
+            bannerInfo: info,
+            discountCode: ""
+        };
 
+        var adminAddress = req.body.wallet_address;
+        var uid = req.body.uid;
+        var chain_id = req.body.chain_id;
+
+        var appInfo = await getApplicationsByUid(adminAddress, uid);
+        if (appInfo === null || appInfo === undefined) {
+            return res.status(200).json(result);
+        }
+
+        if (chain_id == "ethereum" && (appInfo.productContractAddress === null || appInfo.productContractAddress === "")) {
+            return res.status(200).json(result);
+        }
+
+        if (chain_id == "goerli" && (appInfo.testnetContractAddress === null || appInfo.testnetContractAddress === "")) {
+            return res.status(200).json(result);
+        }
+
+        var validContractAddress = "";
+        if (chain_id === "ethereum") {
+            validContractAddress = appInfo.productContractAddress;
+        } else {
+            validContractAddress = appInfo.testnetContractAddress;
+        }
+
+        var availDiscount = await getAvalableDiscount(adminAddress, validContractAddress);
+        if (availDiscount === null || availDiscount === undefined) {
+            return res.status(200).json(result);
+        }
+
+        var shopURL = appInfo.shopURL.replace(/(^\w+:|^)\/\//, '');
+        const session = new Session({
+          id: 'session-id',
+          shop: shopURL,
+          state: 'state1234',
+          isOnline: true,
+          accessToken: appInfo.shopifyAccessToken,
+        });
+      
+        const shopify = shopifyApi({
+          apiKey: appInfo.shopifyAPIKey,
+          apiSecretKey: appInfo.shopifySecretKey,
+          scopes: appInfo.adminAccessScope,
+          hostName: '95.217.102.97',
+          apiVersion: ApiVersion.January23,
+          isEmbeddedApp: true,
+        });
+
+        console.log('priceRuleId', appInfo.priceRuleId);
+        console.log('availDiscount.discount_code', availDiscount.discount_code);
+
+        const client = new shopify.clients.Rest({session});
+        try {
+            const response = await client.get({
+                type: DataType.JSON,
+                path: `/admin/api/2023-01/price_rules/${appInfo.priceRuleId}/discount_codes/${availDiscount.discount_id}.json`,
+            });
+    
+            if (response.body.discount_code.usage_count == 0) {
+                result.discountCode = availDiscount.discount_code;
+                return res.status(200).json(result);
+            }
+            await updateDiscountUsage(adminAddress, validContractAddress, availDiscount.discount_code, availDiscount.discount_id, response.body.discount_code.usage_count);
+        } catch (shopifyerr) {
+            console.log('shopify error', shopifyerr);
+            if (shopifyerr.response.code == 404) {
+                // Not Found. in case the discount code is deleted manually in shopify
+                // In this case delete the discound code in database
+                await deleteDiscountCode(adminAddress, validContractAddress, availDiscount.discount_code, availDiscount.discount_id);
+            }
+        }
         return res
             .status(200)
-            .json({error: null, bannerInfo: info});
+            .json(result);
+
     } catch (e) {
         console.log(e);
         return res

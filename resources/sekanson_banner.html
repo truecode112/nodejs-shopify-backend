@@ -16,40 +16,62 @@
         content="Launching and managing an NFT community is hard. Sekanson has all the tools you need to launch, track, and manage your NFT community and project at scale. All without code." />
     <link rel="apple-touch-icon" href="/favicon.svg" />
     <title>Sekanson - Build and grow your NFT community without code</title>
-    <link href="https://sekanson.com/slimprints/style.css" rel="stylesheet" />
-    <script src="https://sekanson.com/slimprints/main.js"></script>
+    <link href="https://nenad.hariwhitedream.com/style.css" rel="stylesheet" />
+    <script src="https://nenad.hariwhitedream.com/main.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.3.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/js-cookie@3.0.1/dist/js.cookie.min.js"></script>
 </head>
 
 <body style="height: 80px; overflow: hidden; margin: 0px">
-    <div class="sekanson-banner" id="sekanson-banner" style="background-color: rgb(80, 149, 55);">
+    <div class="sekanson-banner" id="sekanson-banner" style="background-color: #ffffff;">
         <div id="sekanson-cta-text" style="color: #ffffff">
         </div>
     </div>
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/web3/1.7.0-rc.0/web3.min.js"></script>
-
+    <input id="curCtaText" name="curCtaText" type="hidden"/>
+    <input id="discountCode" name="discountCode" type="hidden"/>
     <script>
-
-        function setCookie(name,value,minutes) {
-        var expires = "";
-        if (minutes) {
-            var date = new Date();
-            date.setTime(date.getTime() + (minutes*60*1000));
-            expires = "; expires=" + date.toUTCString();
-        }
-        document.cookie = name + "=" + (value || "")  + expires + "; path=/";
-        }
 
         var data_plugin_id = "";
 
-        $(document).ready(function() {
-            var data_plugin_id = window.name;
+        async function getCurrentAccount() {
+            const accounts = await ethereum.request({
+                method: 'eth_accounts'
+            });
+            const currentAccount = accounts[0];
+            return currentAccount;
+        }
+
+        $(document).ready(async function() {
+            var selectedAccount = undefined;
+            if (typeof web3 !== 'undefined') {
+                console.log('Web3 Detected! ' + web3.currentProvider.constructor.name)
+                window.web3 = new Web3(web3.currentProvider);
+                if (typeof window.ethereum !== 'undefined') {
+                    console.log('MetaMask is installed!');
+                    selectedAccount= await getCurrentAccount();
+
+                    console.log('selectedAccount', selectedAccount);
+                } 
+            }
+            
+            var iframe_data = window.name;
+            var data_arr = iframe_data.split(',');
+            var data_plugin_id = data_arr[0];
+            var data_network = data_arr[1];
             console.log('iframe : data_plugin_id', data_plugin_id);
+            console.log('iframe : data_network', data_network);
+            var sendInfo = {
+                wallet_address: selectedAccount,
+                chain_id: data_network,
+                uid: data_plugin_id
+            };
+
             $.ajax({
-                type: "GET",
-                url: "http://95.217.102.97/api/applications/bannerInfo/" + data_plugin_id + "/" + data_plugin_id,
+                type: "POST",
+                url: "http://nenad.hariwhitedream.com/slimprints/api/applications/bannerInfo",
                 headers:{         
                     'Content-Type' : 'application/json',
                 },
@@ -60,18 +82,30 @@
                         var ctaText = data.bannerInfo.ctaText;
                         var bannerBgColor = data.bannerInfo.bannerBgColor;
                         var ctaTextColor = data.bannerInfo.ctaTextColor;
+                        var discountCode = data.discountCode;
+                        if (discountCode === null || discountCode == undefined) {
+                            discountCode == "";
+                        }
+
                         $('#sekanson-banner').css('background-color', bannerBgColor);
                         $('#sekanson-cta-text').css('color', ctaTextColor);
-                        setCookie("curCtaText", ctaText, 0);
-                        $('#sekanson-cta-text').text(ctaText);
+                        $("#curCtaText").val(ctaText);
+                        $("#discountCode").val(discountCode);
+                        if (discountCode === "") 
+                            $('#sekanson-cta-text').text(ctaText);
+                        else
+                            $('#sekanson-cta-text').text('Your current discount code is ' + discountCode);
 
+                        window.parent.postMessage('show_iframe', '*');
                     } else {
                         console.log(data.error);
                     }
                 },
                 error: function(error) {
+                    console.log(err);
 
-                }
+                },
+                data: JSON.stringify(sendInfo)
             })
         });
     </script>
