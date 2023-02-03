@@ -32,6 +32,9 @@ app.use(json());
 app.use(cors());
 
 app.get('/embeds/banner', (req, res) => res.sendFile('resources/sekanson_banner.html', {root: __dirname}));
+app.get('/embeds/main', (req, res) => res.sendFile('resources/main.js', {root: __dirname}));
+app.get('/embeds/setup', (req, res) => res.sendFile('resources/setup.js', {root: __dirname}));
+app.get('/embeds/style', (req, res) => res.sendFile('resources/style.css', {root: __dirname}));
 
 app.get('/resources/:file', (req, res) => {
     res.sendFile(`resources/${req.params.file}`, { root: __dirname });

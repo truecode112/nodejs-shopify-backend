@@ -14,7 +14,7 @@ function isValidDiscountCode(discountCode) {
 }
 
 async function getAccount() {
-  const accounts = await ethereum.request({
+  const accounts = await window.ethereum.request({
     method: 'eth_requestAccounts'
   });
   globalAccount = accounts[0];
@@ -93,7 +93,7 @@ async function callHolder() {
 
   $.ajax({
     type: "POST",
-    url: "http://nenad.hariwhitedream.com/slimprints/api/discount",
+    url: "http://sekanson.com/slimprints/api/discount",
     headers:{         
       'Content-Type' : 'application/json',
     },
@@ -119,6 +119,12 @@ async function callHolder() {
 }
 
 async function connectWallet() {
+  const accounts = await window.ethereum.request({
+        method: 'eth_requestAccounts'//'eth_accounts'
+    });
+
+    console.log(accounts)
+  return;
 
   var discountCode = $("#discountCode").val();
   if (isValidDiscountCode(discountCode)) {
@@ -132,9 +138,9 @@ async function connectWallet() {
     window.web3 = new Web3(web3.currentProvider);
     if (typeof window.ethereum !== 'undefined') {
       console.log('MetaMask is installed!');
-
+      await getAccount();  
       if (globalAccount == undefined) {
-        await getAccount();  
+        ///await getAccount();  
       } 
       
       console.log('globalAccount', globalAccount);
@@ -168,8 +174,55 @@ async function connectWallet() {
   return;
 }
 
+function loadWeb3()
+{
+  if (window.ethereum) 
+  {
+    window.web3 = new Web3(window.ethereum);
+    window.web3.eth.handleRevert = true;
+  } 
+  else if (window.web3) 
+  {
+    window.web3 = new Web3(Web3.givenProvider);
+    window.web3.eth.handleRevert = true;
+  } 
+  else {
+    // window.alert(
+    //   "Non-Ethereum browser detected. Please connect and unlock your wallet."
+    // );
+    return;
+  }
+  if (window.ethereum) {
+    window.web3 = new Web3(Web3.givenProvider);
+    window.ethereum.on('chainChanged', function (chainId) {
+      console.log('chainChanged', chainId);
+    });
+    window.web3.eth.getChainId().then((chainId) => {
+      console.log('currentChainId', chainId);
+    });
+    window.ethereum.on('disconnect', function(error  /*:ProviderRpcError*/) {
+      //alert("disconnected, " + error);      
+      console.log('disconnected');
+    });
+    console.log('>>> 1', window.ethereum)
+    window.ethereum.on('accountsChanged', ( accounts/*: Array<string>*/) => {
+      console.log('account changed', accounts);
+      /*alert("wallet "+accounts[0]+" is connected");
+      console.log('accountsChanged', accounts[0]);
+       if(accounts[0] !== undefined)
+       {
+        console.log('accountsChanged', accounts[0]);
+       }
+       if(accounts.length === 0) {
+        console.log('no account selected');
+       }*/
+    });
+  }
+};
+
 window.onload = (event) => {
   const button = document.querySelector("#sekanson-banner");
   button.addEventListener("click", connectWallet);
+  loadWeb3();
   //refreshBanner(0);
 }

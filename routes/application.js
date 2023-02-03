@@ -129,6 +129,11 @@ app_router.post('/bannerInfo', async(req, res) => {
         console.log('get banner info', req.body);
         
         var info = await App.getBannerInfo("", req.body.uid);
+
+        if (info == null || info == undefined) {
+            return res.status(200).json({error:"No banner info", discountCode: "", bannerInfo: null});
+        }
+
         var result = {
             error: null,
             bannerInfo: info,
@@ -141,6 +146,7 @@ app_router.post('/bannerInfo', async(req, res) => {
 
         var appInfo = await getApplicationsByUid(adminAddress, uid);
         if (appInfo === null || appInfo === undefined) {
+            console.log('appInfo is ' + appInfo);
             return res.status(200).json(result);
         }
 

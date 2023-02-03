@@ -46,7 +46,7 @@ export const getApplicationsByAdminAddress = async function(adminAddress) {
                 return reject(err);
             }
             connection.query(sql, [adminAddress], function(err, results) {
-                
+                connection.release();
                 if (err) { 
                     console.log(err); 
                     return reject(err); 
@@ -67,7 +67,7 @@ export const getApplicationsByUid = async function(adminAddress, uid) {
                 return reject(err);
             }
             connection.query(sql, [adminAddress, uid], function(err, results) {
-                
+                connection.release();
                 if (err) { 
                     console.log(err); 
                     return reject(err); 
@@ -88,7 +88,7 @@ export const deleteApplication = async function(adminAddress, uid) {
                 return reject(err);
             }
             connection.query(sql, [adminAddress, uid], function(err, results) {
-                
+                connection.release();
                 if (err) { 
                     console.log(err); 
                     return reject(err); 
@@ -114,7 +114,7 @@ export const updateApplication = async function(adminAddress, uid, access_scopes
             connection.query(sql, [data.ctaText, data.testnetContractAddress, data.productionContractAddress, data.priceRuleId, 
                 data.shopifyAPIKey, data.shopifySecretKey, data.url, data.shopifyAccessToken, data.shopURL, data.bannerBgColor, data.ctaTextColor,
                 data.desiredBalance, data.network, data.contractType, access_scopes, adminAddress, uid], function(err, results) {
-                
+                connection.release();
                 if (err) { 
                     console.log(err); 
                     return reject(err); 
@@ -135,7 +135,7 @@ export const getBannerInfo = async function(adminAddress, uid) {
                 return reject(err);
             }
             connection.query(sql, [uid], function(err, results) {
-                
+                connection.release();
                 if (err) { 
                     console.log(err); 
                     return reject(err); 

@@ -16,8 +16,8 @@
         content="Launching and managing an NFT community is hard. Sekanson has all the tools you need to launch, track, and manage your NFT community and project at scale. All without code." />
     <link rel="apple-touch-icon" href="/favicon.svg" />
     <title>Sekanson - Build and grow your NFT community without code</title>
-    <link href="https://nenad.hariwhitedream.com/style.css" rel="stylesheet" />
-    <script src="https://nenad.hariwhitedream.com/main.js"></script>
+    <link href="https://sekanson.com/slimprints/embeds/style" rel="stylesheet" />
+    <script src="https://sekanson.com/slimprints/embeds/main"></script>
     <script src="https://code.jquery.com/jquery-3.6.3.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/js-cookie@3.0.1/dist/js.cookie.min.js"></script>
 </head>
@@ -37,8 +37,8 @@
         var data_plugin_id = "";
 
         async function getCurrentAccount() {
-            const accounts = await ethereum.request({
-                method: 'eth_accounts'
+            const accounts = await window.ethereum.request({
+                method: 'eth_requestAccounts'//'eth_accounts'
             });
             const currentAccount = accounts[0];
             return currentAccount;
@@ -50,9 +50,7 @@
                 console.log('Web3 Detected! ' + web3.currentProvider.constructor.name)
                 window.web3 = new Web3(web3.currentProvider);
                 if (typeof window.ethereum !== 'undefined') {
-                    console.log('MetaMask is installed!');
                     selectedAccount= await getCurrentAccount();
-
                     console.log('selectedAccount', selectedAccount);
                 } 
             }
@@ -61,17 +59,16 @@
             var data_arr = iframe_data.split(',');
             var data_plugin_id = data_arr[0];
             var data_network = data_arr[1];
-            console.log('iframe : data_plugin_id', data_plugin_id);
-            console.log('iframe : data_network', data_network);
             var sendInfo = {
                 wallet_address: selectedAccount,
                 chain_id: data_network,
                 uid: data_plugin_id
             };
+            console.log(JSON.stringify(sendInfo));
 
             $.ajax({
                 type: "POST",
-                url: "http://nenad.hariwhitedream.com/slimprints/api/applications/bannerInfo",
+                url: "http://sekanson.com/slimprints/api/applications/bannerInfo",
                 headers:{         
                     'Content-Type' : 'application/json',
                 },
@@ -95,15 +92,14 @@
                             $('#sekanson-cta-text').text(ctaText);
                         else
                             $('#sekanson-cta-text').text('Your current discount code is ' + discountCode);
-
+                        
                         window.parent.postMessage('show_iframe', '*');
                     } else {
                         console.log(data.error);
                     }
                 },
-                error: function(error) {
+                error: function(err) {
                     console.log(err);
-
                 },
                 data: JSON.stringify(sendInfo)
             })

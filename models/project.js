@@ -45,7 +45,7 @@ export const getProjectsByAdminAddress = async function(adminAddress) {
                 return reject(err);
             }
             connection.query(sql, [adminAddress], function(err, results) {
-                
+                connection.release();
                 if (err) { 
                     console.log(err); 
                     return reject(err); 
@@ -66,7 +66,7 @@ export const getProjectByUid = async function(adminAddress, uid) {
                 return reject(err);
             }
             connection.query(sql, [adminAddress, uid], function(err, results) {
-                
+                connection.release();
                 if (err) { 
                     console.log(err); 
                     return reject(err); 
@@ -87,7 +87,7 @@ export const deleteProject = async function(adminAddress, uid) {
                 return reject(err);
             }
             connection.query(sql, [adminAddress, uid], function(err, results) {
-                
+                connection.release();
                 if (err) { 
                     console.log(err); 
                     return reject(err); 
