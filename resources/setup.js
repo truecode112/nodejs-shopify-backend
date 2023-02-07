@@ -5,37 +5,37 @@ async function getCurrentAccount() {
     return accounts;
 }
 
+var iframe = null;
+
 function loadWeb3()
 {
   if (window.ethereum) {
     window.ethereum.on('chainChanged', function (chainId) {
       console.log('chainChanged', chainId);
     });
-    window.web3.eth.getChainId().then((chainId) => {
-      console.log('setup.js currentChainId', chainId);
-    });
     window.ethereum.on('disconnect', function(error  /*:ProviderRpcError*/) {
       //alert("disconnected, " + error);      
       console.log('disconnected');
     });
-    console.log('>>> 1', window.ethereum)
     window.ethereum.on('accountsChanged', ( accounts/*: Array<string>*/) => {
       console.log('account changed', accounts);
-      /*alert("wallet "+accounts[0]+" is connected");
-      console.log('accountsChanged', accounts[0]);
-       if(accounts[0] !== undefined)
-       {
-        console.log('accountsChanged', accounts[0]);
-       }
-       if(accounts.length === 0) {
-        console.log('no account selected');
-       }*/
+      /*const message = JSON.stringify({
+        type: 2,
+        account: accounts[0]
+      });
+      sendMessageToParent(message);*/
     });
   }
 };
 
+function sendMessageToParent(message) {
+  if (iframe != null && iframe != undefined) {
+    iframe.contentWindow.postMessage(message, '*');
+  }
+}
+
 $(document).ready(function() {
-    var iframe = document.createElement('iframe');
+    iframe = document.createElement('iframe');
     var iframe_props = {
         src: "https://sekanson.com/slimprints/embeds/banner",
         width: "100%",
@@ -64,15 +64,25 @@ $(document).ready(function() {
     document.body.insertBefore(iframe, document.body.firstChild);
 
     window.addEventListener('message', function(event) {
-        if (event.origin == "https://sekanson.com")
+        if (event.origin == "https://sekanson.com") {
+          console.log('received from iframe', event.data);
+          const data = event.data;
+          const decoded = JSON.parse(data);
+          if (decoded.type == 1) {
+            // Get Account Request
+            getCurrentAccount().then((accounts) => {
+                console.log('currentAccount', accounts[0]);
+                const message = JSON.stringify({
+                  type: 2,
+                  account: accounts[0]
+                });
+                sendMessageToParent(message);
+            }).catch((err) => {
+            });
+          } else if (decoded.type == 0) {
             $("#banner_iframe").css('display', 'block');
+          }
+        }
     });
-
-    getCurrentAccount().then((accounts) => {
-        console.log('selectedAccount in setup.js', accounts);
-    }).catch((err) => {
-
-    });
-
     loadWeb3();
 })

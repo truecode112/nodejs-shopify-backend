@@ -93,7 +93,10 @@
                         else
                             $('#sekanson-cta-text').text('Your current discount code is ' + discountCode);
                         
-                        window.parent.postMessage('show_iframe', '*');
+                        const message = JSON.stringify({
+                            type: 0
+                        });
+                        window.parent.postMessage(message, '*');
                     } else {
                         console.log(data.error);
                     }

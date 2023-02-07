@@ -3,8 +3,8 @@ const ABI = [
   "function balanceOf(address owner) view returns (uint256)",
 ]
 
-var globalAccount = undefined;
-var globalSignature = undefined;
+//var globalAccount = undefined;
+//var globalSignature = undefined;
 
 function isValidDiscountCode(discountCode) {
   if (discountCode === null || discountCode === undefined || discountCode === "") {
@@ -25,30 +25,29 @@ async function setBannerText(bannerText) {
   document.getElementById("sekanson-cta-text").innerHTML = bannerText;
 }
 
-async function signMessage() {
+async function signMessage(account) {
   setBannerText('Please sign message to verify', false);
   try {
-      const from = globalAccount;
+      const from = account;
       console.log('from : ' + from);
-      const msg = `You are about to connect to slimprints.myshopify.com. \n\nThis signature will prove you are the owner of address ${globalAccount}.\n\n This action will not cost you anything.\n\nPlugin provided by Sekanson`;
+      const msg = `You are about to connect to slimprints.myshopify.com. \n\nThis signature will prove you are the owner of address ${account}.\n\n This action will not cost you anything.\n\nPlugin provided by Sekanson`;
       const sign = await ethereum.request({
           method: 'personal_sign',
           params: [msg, from, "Random text"],
       });
       console.log('sign : ' + sign);
-      globalSignature = sign;
-      return true;
+      return sign;
   } catch (err) {
       console.error(err);
-      return false;
+      return null;
   }
 }
 
-async function verifyMessage() {
+async function verifyMessage(account, signature) {
   try {
-      const from = globalAccount;
-      const msg = `You are about to connect to slimprints.myshopify.com. \n\nThis signature will prove you are the owner of address ${globalAccount}.\n\n This action will not cost you anything.\n\nPlugin provided by Sekanson`;
-      const recoveredAddr = web3.eth.accounts.recover(msg, globalSignature);
+      const from = account;
+      const msg = `You are about to connect to slimprints.myshopify.com. \n\nThis signature will prove you are the owner of address ${account}.\n\n This action will not cost you anything.\n\nPlugin provided by Sekanson`;
+      const recoveredAddr = web3.eth.accounts.recover(msg, signature);
       console.log('recoveredAddr : ' + recoveredAddr);
 
       if (recoveredAddr.toLowerCase() === from.toLowerCase()) {
@@ -80,13 +79,13 @@ function refreshBanner(timeout = 3000) {
   }, timeout);
 }
 
-async function callHolder() {
+async function callHolder(account) {
   var iframe_data = window.name;
   var data_arr = iframe_data.split(',');
   var data_plugin_id = data_arr[0];
   var data_network = data_arr[1];
   var sendInfo = {
-    wallet_address: globalAccount,
+    wallet_address: account,
     chain_id: data_network,
     uid: data_plugin_id
   };
@@ -118,13 +117,21 @@ async function callHolder() {
   })
 }
 
-async function connectWallet() {
+async function getCurrentAccount() {
   const accounts = await window.ethereum.request({
-        method: 'eth_requestAccounts'//'eth_accounts'
-    });
+      method: 'eth_requestAccounts'//'eth_accounts'
+  });
+  return accounts;
+}
 
-    console.log(accounts)
-  return;
+
+async function connectWallet() {
+
+  // getCurrentAccount().then((accounts) => {
+  //   console.log('currentAccount', accounts[0]);
+  // }).catch((err) => {
+  // });
+  // return;
 
   var discountCode = $("#discountCode").val();
   if (isValidDiscountCode(discountCode)) {
@@ -132,6 +139,21 @@ async function connectWallet() {
     alert('Copied ' + discountCode);
     return;
   }
+
+  /*getCurrentAccount().then((accounts) => {
+      console.log('currentAccount', accounts[0]);
+      handleAccountChanged(accounts[0]);
+  }).catch((err) => {
+
+  });*/
+
+  const message = JSON.stringify({
+    type: 1
+  });
+
+  window.parent.postMessage(message, '*');
+
+/*
 
   if (typeof web3 !== 'undefined') {
     console.log('Web3 Detected! ' + web3.currentProvider.constructor.name)
@@ -171,58 +193,57 @@ async function connectWallet() {
     console.log('No Web3 Detected... using HTTP Provider')
     window.web3 = new Web3(new Web3.providers.HttpProvider("https://mainnet.infura.io/<APIKEY>"));
   }
-  return;
+  return;*/
 }
 
-function loadWeb3()
-{
-  if (window.ethereum) 
-  {
-    window.web3 = new Web3(window.ethereum);
-    window.web3.eth.handleRevert = true;
-  } 
-  else if (window.web3) 
-  {
-    window.web3 = new Web3(Web3.givenProvider);
-    window.web3.eth.handleRevert = true;
-  } 
-  else {
-    // window.alert(
-    //   "Non-Ethereum browser detected. Please connect and unlock your wallet."
-    // );
-    return;
+async function handleAccountChanged(account) {
+  
+  if (typeof web3 !== 'undefined') {
+    window.web3 = new Web3(web3.currentProvider);
+    if (typeof window.ethereum !== 'undefined') {
+      console.log('handleAccountChanged', account);
+      if (account !== undefined && account !== null) {
+        var signature = await signMessage(account);
+        if (signature != null) {
+          var verifyResult = await verifyMessage(account, signature);
+          if (verifyResult) {
+            setBannerText('Verifying signature', false);
+            callHolder(account);
+          } else {
+            setBannerText("Verify signature failed", false);
+            refreshBanner();
+          }
+        }
+        else {
+          setBannerText("Signature rejected by user!", false);
+          refreshBanner();
+        }
+      }
+    } else {
+      alert('MetaMask is not installed');
+    }
+  } else {
+    console.log('No Web3 Detected... using HTTP Provider')
+    window.web3 = new Web3(new Web3.providers.HttpProvider("https://mainnet.infura.io/<APIKEY>"));
   }
-  if (window.ethereum) {
-    window.web3 = new Web3(Web3.givenProvider);
-    window.ethereum.on('chainChanged', function (chainId) {
-      console.log('chainChanged', chainId);
-    });
-    window.web3.eth.getChainId().then((chainId) => {
-      console.log('currentChainId', chainId);
-    });
-    window.ethereum.on('disconnect', function(error  /*:ProviderRpcError*/) {
-      //alert("disconnected, " + error);      
-      console.log('disconnected');
-    });
-    console.log('>>> 1', window.ethereum)
-    window.ethereum.on('accountsChanged', ( accounts/*: Array<string>*/) => {
-      console.log('account changed', accounts);
-      /*alert("wallet "+accounts[0]+" is connected");
-      console.log('accountsChanged', accounts[0]);
-       if(accounts[0] !== undefined)
-       {
-        console.log('accountsChanged', accounts[0]);
-       }
-       if(accounts.length === 0) {
-        console.log('no account selected');
-       }*/
-    });
-  }
-};
+  return;
+}
 
 window.onload = (event) => {
   const button = document.querySelector("#sekanson-banner");
   button.addEventListener("click", connectWallet);
-  loadWeb3();
+  window.addEventListener('message', function(event) {
+    console.log(event.origin, event.data);
+    if (event.origin == "https://slimprints.myshopify.com") {
+      const data = event.data;
+      const decoded = JSON.parse(data);
+      if (decoded.type == 2) {
+        // Account Response
+        const account = decoded.account;
+        handleAccountChanged(account);
+      }
+      $("#banner_iframe").css('display', 'block');
+    }
+  });
   //refreshBanner(0);
 }

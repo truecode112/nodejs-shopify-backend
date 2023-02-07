@@ -4,10 +4,11 @@ import * as App from '../models/application.js';
 import {Session} from '@shopify/shopify-api';
 import '@shopify/shopify-api/adapters/node'
 import fetch from 'node-fetch';
-import { getAvalableDiscount, updateDiscountUsage, deleteDiscountCode } from '../models/discount.js';
+import { getAvailableDiscount, updateDiscountUsage, deleteDiscountCode } from '../models/discount.js';
 import { shopifyApi, ApiVersion, BillingInterval, DataType } from '@shopify/shopify-api';
 import '@shopify/shopify-api/adapters/node'
 import { getApplicationsByUid } from '../models/application.js';
+import { ThirdwebSDK } from "@thirdweb-dev/sdk";
 
 var app_router = express.Router();
 
@@ -150,7 +151,7 @@ app_router.post('/bannerInfo', async(req, res) => {
             return res.status(200).json(result);
         }
 
-        if (chain_id == "ethereum" && (appInfo.productContractAddress === null || appInfo.productContractAddress === "")) {
+        if (chain_id == "ethereum" && (appInfo.productionContractAddress === null || appInfo.productionContractAddress === "")) {
             return res.status(200).json(result);
         }
 
@@ -160,12 +161,25 @@ app_router.post('/bannerInfo', async(req, res) => {
 
         var validContractAddress = "";
         if (chain_id === "ethereum") {
-            validContractAddress = appInfo.productContractAddress;
+            chain_id = "mainnet";
+            validContractAddress = appInfo.productionContractAddress;
         } else {
             validContractAddress = appInfo.testnetContractAddress;
         }
 
-        var availDiscount = await getAvalableDiscount(adminAddress, validContractAddress);
+        const sdk = new ThirdwebSDK(chain_id);
+        
+        const edition = await sdk.getContract(validContractAddress, "nft-collection");
+        const tokenIds = await edition.getOwnedTokenIds(adminAddress);
+
+        var availDiscount = null;
+        for (const tokenId of tokenIds) {
+            availDiscount = await getAvailableDiscount(adminAddress, validContractAddress, tokenId.toNumber());
+            if (availDiscount != null && availDiscount != undefined) {
+                break;
+            }
+        }
+
         if (availDiscount === null || availDiscount === undefined) {
             return res.status(200).json(result);
         }

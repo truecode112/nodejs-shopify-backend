@@ -11,7 +11,7 @@ import voucher_codes from 'voucher-code-generator';
 import { ThirdwebSDK } from "@thirdweb-dev/sdk";
 
 import express from 'express';
-import { getDiscountCount, saveNewDiscount } from '../models/discount.js';
+import { getDiscountCount, saveNewDiscount, getAvailableDiscount } from '../models/discount.js';
 import { getApplicationsByUid } from '../models/application.js';
 
 var discount_router = express.Router();
@@ -33,12 +33,12 @@ discount_router.post('/', async (req, res) => {
         var uid = req.body.uid;
 
         var appInfo = await getApplicationsByUid(wallet_address, uid);
-        console.log(appInfo);
+        //console.log(appInfo);
         if (appInfo === null || appInfo === undefined) {
           return res.status(200).json({error: "Invalid plugin configuration", message: "", discount_code: ""});
         }
 
-        if (chain_id == "ethereum" && (appInfo.productContractAddress === null || appInfo.productContractAddress === "")) {
+        if (chain_id == "ethereum" && (appInfo.productionContractAddress === null || appInfo.productionContractAddress === "")) {
           return res.status(200).json({error: "No valid mainnet contract address", message: "", discount_code: ""});
         }
 
@@ -48,7 +48,7 @@ discount_router.post('/', async (req, res) => {
 
         var validContractAddress = "";
         if (chain_id === "ethereum") {
-          validContractAddress = appInfo.productContractAddress;
+          validContractAddress = appInfo.productionContractAddress;
         } else {
           validContractAddress = appInfo.testnetContractAddress;
         }
@@ -65,10 +65,13 @@ discount_router.post('/', async (req, res) => {
           apiKey: appInfo.shopifyAPIKey,
           apiSecretKey: appInfo.shopifySecretKey,
           scopes: appInfo.adminAccessScope,
-          hostName: '95.217.102.97',
+          hostName: 'sekanson.com',
           apiVersion: ApiVersion.January23,
           isEmbeddedApp: true,
         });
+
+        if (chain_id == "ethereum")
+          chain_id = "mainnet";
 
         const sdk = new ThirdwebSDK(chain_id);
         
@@ -88,6 +91,12 @@ discount_router.post('/', async (req, res) => {
         var validTokenIdNum = -1;
 
         for (const tokenId of tokenIds) {
+          var available_discount = await getAvailableDiscount(wallet_address, validContractAddress, tokenId.toNumber());
+          if (available_discount != null && available_discount != undefined) {
+            return res
+            .status(200)
+            .json({error: null, message: "Your current discount code is " + available_discount.discount_code, discount_code: available_discount.discount_code});
+          }
           var discount_count = await getDiscountCount(wallet_address, validContractAddress, tokenId.toNumber());
           console.log('Current discount code count', discount_count);
           if (discount_count === 0 || discount_count === undefined) {

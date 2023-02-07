@@ -26,6 +26,26 @@ export const getDiscountCount = async function(wallet_address, nft_contract_addr
     })
 };
 
+export const getAvailableDiscount = async function(wallet_address, nft_contract_address, token_id) {
+    return new Promise((resolve, reject) => {
+        var sql = "SELECT discount_code, discount_id FROM discounts WHERE wallet_address = ? AND nft_contract_address = ? AND token_id = ? AND usage_count = 0";
+        pool.getConnection(function(err, connection) {
+            if (err) { 
+                console.log(err); 
+                return reject(err);
+            }
+            connection.query(sql, [wallet_address, nft_contract_address, token_id], function(err, results) {
+                connection.release();
+                if (err) { 
+                    console.log(err); 
+                    return reject(err); 
+                }
+                return resolve(results[0]);
+            });
+        });
+    })
+};
+
 export const saveNewDiscount = async function(wallet_address, new_discount, new_discount_id, nft_contract_address, token_id, date_created) {
     return new Promise((resolve, reject) => {
         var sql = "INSERT INTO discounts (wallet_address, nft_contract_address, token_id, discount_code, discount_id, date_created) VALUES (?, ?, ?, ?, ?, ?)";
@@ -45,8 +65,8 @@ export const saveNewDiscount = async function(wallet_address, new_discount, new_
         });
     });
 }
-
-export const getAvalableDiscount = async function(wallet_address, nft_contract_address) {
+/*
+export const getAvailableDiscount = async function(wallet_address, nft_contract_address) {
     return new Promise((resolve, reject) => {
         var sql = "SELECT discount_code, discount_id FROM discounts WHERE wallet_address = ? AND nft_contract_address = ? AND usage_count = 0";
         pool.getConnection(function(err, connection) {
@@ -65,7 +85,7 @@ export const getAvalableDiscount = async function(wallet_address, nft_contract_a
         });
     });
 }
-
+*/
 export const updateDiscountUsage = async function(wallet_address, nft_contract_address, discount_code, discount_id, usage_count) {
     return new Promise((resolve, reject) => {
         var sql = "UPDATE discounts SET usage_count = ? WHERE wallet_address = ? AND nft_contract_address = ? AND discount_code = ? AND discount_id = ?";
