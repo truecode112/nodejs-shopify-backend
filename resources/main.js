@@ -234,7 +234,7 @@ window.onload = (event) => {
   button.addEventListener("click", connectWallet);
   window.addEventListener('message', function(event) {
     console.log(event.origin, event.data);
-    if (event.origin == "https://slimprints.myshopify.com") {
+    if (event.origin == "https://slimprints.myshopify.com" || event.origin == "https://slimprints.com") {
       const data = event.data;
       const decoded = JSON.parse(data);
       if (decoded.type == 2) {

@@ -60,13 +60,13 @@ export const getApplicationsByAdminAddress = async function(adminAddress) {
 
 export const getApplicationsByUid = async function(adminAddress, uid) {
     return new Promise((resolve, reject) => {
-        var sql = "SELECT * FROM applications WHERE adminAddress = ? AND uid = ?";
+        var sql = "SELECT * FROM applications WHERE uid = ?";
         pool.getConnection(function(err, connection) {
             if (err) { 
                 console.log(err); 
                 return reject(err);
             }
-            connection.query(sql, [adminAddress, uid], function(err, results) {
+            connection.query(sql, [uid], function(err, results) {
                 connection.release();
                 if (err) { 
                     console.log(err); 
