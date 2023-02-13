@@ -128,7 +128,7 @@ export const updateApplication = async function(adminAddress, uid, access_scopes
 
 export const getBannerInfo = async function(adminAddress, uid) {
     return new Promise((resolve, reject) => {
-        var sql = "SELECT ctaText, bannerBgColor, ctaTextColor FROM applications WHERE uid = ?";
+        var sql = "SELECT ctaText, bannerBgColor, ctaTextColor, url FROM applications WHERE uid = ?";
         pool.getConnection(function(err, connection) {
             if (err) { 
                 console.log(err); 

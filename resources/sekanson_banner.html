@@ -32,6 +32,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/web3/1.7.0-rc.0/web3.min.js"></script>
     <input id="curCtaText" name="curCtaText" type="hidden"/>
     <input id="discountCode" name="discountCode" type="hidden"/>
+    <input id="storeURL" name="storeURL" type="hidden" />
     <script>
 
         var data_plugin_id = "";
@@ -79,6 +80,7 @@
                         var ctaText = data.bannerInfo.ctaText;
                         var bannerBgColor = data.bannerInfo.bannerBgColor;
                         var ctaTextColor = data.bannerInfo.ctaTextColor;
+                        var url = data.bannerInfo.url;
                         var discountCode = data.discountCode;
                         if (discountCode === null || discountCode == undefined) {
                             discountCode == "";
@@ -88,6 +90,8 @@
                         $('#sekanson-cta-text').css('color', ctaTextColor);
                         $("#curCtaText").val(ctaText);
                         $("#discountCode").val(discountCode);
+                        $('#storeURL').val(url);
+                        
                         if (discountCode === "") 
                             $('#sekanson-cta-text').text(ctaText);
                         else
