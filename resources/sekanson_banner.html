@@ -16,8 +16,8 @@
         content="Launching and managing an NFT community is hard. Sekanson has all the tools you need to launch, track, and manage your NFT community and project at scale. All without code." />
     <link rel="apple-touch-icon" href="/favicon.svg" />
     <title>Sekanson - Build and grow your NFT community without code</title>
-    <link href="https://sekanson.com/slimprints/embeds/style" rel="stylesheet" />
-    <script src="https://sekanson.com/slimprints/embeds/main"></script>
+    <link href="https://sekanson.com/shopify/embeds/style" rel="stylesheet" />
+    <script src="https://sekanson.com/shopify/embeds/main"></script>
     <script src="https://code.jquery.com/jquery-3.6.3.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/js-cookie@3.0.1/dist/js.cookie.min.js"></script>
 </head>
@@ -32,6 +32,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/web3/1.7.0-rc.0/web3.min.js"></script>
     <input id="curCtaText" name="curCtaText" type="hidden"/>
     <input id="discountCode" name="discountCode" type="hidden"/>
+    <input id="createdAt" name="createdAt" type="hidden"/>
     <input id="storeURL" name="storeURL" type="hidden" />
     <script>
 
@@ -60,17 +61,19 @@
             var data_arr = iframe_data.split(',');
             var data_plugin_id = data_arr[0];
             var data_network = data_arr[1];
+            console.log(document.referrer);
             var sendInfo = {
                 wallet_address: selectedAccount,
                 chain_id: data_network,
-                uid: data_plugin_id
+                uid: data_plugin_id,
+                store: document.referrer
             };
             console.log(JSON.stringify(sendInfo));
 
             $.ajax({
                 type: "POST",
-                url: "http://sekanson.com/slimprints/api/applications/bannerInfo",
-                headers:{         
+                url: "https://sekanson.com/shopify/api/applications/bannerInfo",
+                headers:{
                     'Content-Type' : 'application/json',
                 },
                 dataType: "json",
@@ -82,6 +85,7 @@
                         var ctaTextColor = data.bannerInfo.ctaTextColor;
                         var url = data.bannerInfo.url;
                         var discountCode = data.discountCode;
+                        var createdAt = data.createdAt;
                         if (discountCode === null || discountCode == undefined) {
                             discountCode == "";
                         }
@@ -90,12 +94,18 @@
                         $('#sekanson-cta-text').css('color', ctaTextColor);
                         $("#curCtaText").val(ctaText);
                         $("#discountCode").val(discountCode);
+                        $('#createdAt').val(createdAt);
                         $('#storeURL').val(url);
                         
                         if (discountCode === "") 
                             $('#sekanson-cta-text').text(ctaText);
-                        else
+                        else {
+                            var expire_date_str = new Date(createdAt).toISOString()
+                                .replace(/T/, ' ')
+                                .replace(/\..+/, '');
+                            //$('#sekanson-cta-text').text('Your current discount code is ' + discountCode + '<br/>' + 'Valid until ' + expire_date_str);
                             $('#sekanson-cta-text').text('Your current discount code is ' + discountCode);
+                        }
                         
                         const message = JSON.stringify({
                             type: 0

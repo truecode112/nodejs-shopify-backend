@@ -6,15 +6,15 @@ var pool = mysql.createPool({
     database: 'slimprints'
 });
 
-export const getDiscountCount = async function(wallet_address, nft_contract_address, token_id) {
+export const getDiscountCount = async function(wallet_address, nft_contract_address, token_id, store) {
     return new Promise((resolve, reject) => {
-        var sql = "SELECT COUNT(*) as Count FROM discounts WHERE wallet_address = ? AND nft_contract_address = ? AND token_id = ?";
+        var sql = "SELECT COUNT(*) as Count FROM discounts WHERE wallet_address = ? AND nft_contract_address = ? AND token_id = ? AND ((? - date_created) < 15*60*1000) AND store = ?";
         pool.getConnection(function(err, connection) {
             if (err) { 
                 console.log(err); 
                 return reject(err);
             }
-            connection.query(sql, [wallet_address, nft_contract_address, token_id], function(err, results) {
+            connection.query(sql, [wallet_address, nft_contract_address, token_id, Date.now(), store], function(err, results) {
                 connection.release();
                 if (err) { 
                     console.log(err); 
@@ -26,15 +26,15 @@ export const getDiscountCount = async function(wallet_address, nft_contract_addr
     })
 };
 
-export const getAvailableDiscount = async function(wallet_address, nft_contract_address, token_id) {
+export const getAvailableDiscount = async function(wallet_address, nft_contract_address, token_id, store) {
     return new Promise((resolve, reject) => {
-        var sql = "SELECT discount_code, discount_id FROM discounts WHERE wallet_address = ? AND nft_contract_address = ? AND token_id = ? AND usage_count = 0";
+        var sql = "SELECT discount_code, discount_id, date_created FROM discounts WHERE wallet_address = ? AND nft_contract_address = ? AND token_id = ? AND usage_count = 0 AND ((? - date_created) < 15 * 60 * 1000) AND store = ?";
         pool.getConnection(function(err, connection) {
             if (err) { 
                 console.log(err); 
                 return reject(err);
             }
-            connection.query(sql, [wallet_address, nft_contract_address, token_id], function(err, results) {
+            connection.query(sql, [wallet_address, nft_contract_address, token_id, Date.now(), store], function(err, results) {
                 connection.release();
                 if (err) { 
                     console.log(err); 
@@ -46,15 +46,15 @@ export const getAvailableDiscount = async function(wallet_address, nft_contract_
     })
 };
 
-export const saveNewDiscount = async function(wallet_address, new_discount, new_discount_id, nft_contract_address, token_id, date_created) {
+export const saveNewDiscount = async function(wallet_address, new_discount, new_discount_id, nft_contract_address, token_id, date_created, store) {
     return new Promise((resolve, reject) => {
-        var sql = "INSERT INTO discounts (wallet_address, nft_contract_address, token_id, discount_code, discount_id, date_created) VALUES (?, ?, ?, ?, ?, ?)";
+        var sql = "INSERT INTO discounts (wallet_address, nft_contract_address, token_id, discount_code, discount_id, date_created, store) VALUES (?, ?, ?, ?, ?, ?, ?)";
         pool.getConnection(function(err, connection) {
             if (err) { 
                 console.log(err); 
                 return reject(err); 
             }
-            connection.query(sql, [wallet_address, nft_contract_address, token_id, new_discount, new_discount_id, date_created], function(err, results) {
+            connection.query(sql, [wallet_address, nft_contract_address, token_id, new_discount, new_discount_id, date_created, store], function(err, results) {
                 connection.release();
                 if (err) { 
                     console.log(err); 

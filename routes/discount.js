@@ -4,11 +4,12 @@ import dotenv from 'dotenv';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config({path:path.resolve(__dirname, '../.env')});
-import { shopifyApi, ApiVersion, BillingInterval, DataType } from '@shopify/shopify-api';
+import { shopifyApi, LATEST_API_VERSION, BillingInterval, DataType } from '@shopify/shopify-api';
 import '@shopify/shopify-api/adapters/node'
 import {Session} from '@shopify/shopify-api';
 import voucher_codes from 'voucher-code-generator';
 import { ThirdwebSDK } from "@thirdweb-dev/sdk";
+import { Ethereum } from '@thirdweb-dev/chains';
 
 import express from 'express';
 import { getDiscountCount, saveNewDiscount, getAvailableDiscount } from '../models/discount.js';
@@ -31,6 +32,7 @@ discount_router.post('/', async (req, res) => {
         var wallet_address = req.body.wallet_address;
         var chain_id = req.body.chain_id;
         var uid = req.body.uid;
+        var store = req.body.store;
 
         var appInfo = await getApplicationsByUid(wallet_address, uid);
         //console.log(appInfo);
@@ -60,20 +62,23 @@ discount_router.post('/', async (req, res) => {
           isOnline: true,
           accessToken: appInfo.shopifyAccessToken,
         });
-      
+
         const shopify = shopifyApi({
           apiKey: appInfo.shopifyAPIKey,
           apiSecretKey: appInfo.shopifySecretKey,
           scopes: appInfo.adminAccessScope,
-          hostName: 'sekanson.com',
-          apiVersion: ApiVersion.January23,
+          hostName: 'odto.com',
+          apiVersion: LATEST_API_VERSION,
           isEmbeddedApp: true,
         });
 
         if (chain_id == "ethereum")
-          chain_id = "mainnet";
+          chain_id = Ethereum;
 
-        const sdk = new ThirdwebSDK(chain_id);
+        const sdk = new ThirdwebSDK(chain_id, {
+          clientId: "204a66e18d4370254df09a3726e66310",
+          secretKey: "ajiqrmKmnqq8ldUwvkCjgCqgKy3u7JiNvKVRlvBkud1FfEyIX4MZuRGjiuof4T52bAhqF2mWvkiVuVihR-pYJQ"
+        });
         
         console.log('contract address', validContractAddress);
         
@@ -91,13 +96,13 @@ discount_router.post('/', async (req, res) => {
         var validTokenIdNum = -1;
 
         for (const tokenId of tokenIds) {
-          var available_discount = await getAvailableDiscount(wallet_address, validContractAddress, tokenId.toNumber());
+          var available_discount = await getAvailableDiscount(wallet_address, validContractAddress, tokenId.toNumber(), store);
           if (available_discount != null && available_discount != undefined) {
             return res
             .status(200)
-            .json({error: null, message: "Your current discount code is " + available_discount.discount_code, discount_code: available_discount.discount_code});
+            .json({error: null, message: "Your current discount code is " + available_discount.discount_code, discount_code: available_discount.discount_code, createdAt: available_discount.date_created});
           }
-          var discount_count = await getDiscountCount(wallet_address, validContractAddress, tokenId.toNumber());
+          var discount_count = await getDiscountCount(wallet_address, validContractAddress, tokenId.toNumber(), store);
           console.log('Current discount code count', discount_count);
           if (discount_count === 0 || discount_count === undefined) {
             validTokenIdNum = tokenId.toNumber();
@@ -116,10 +121,12 @@ discount_router.post('/', async (req, res) => {
             count: 1,
             charset: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
         });
+
+        console.log('new_discount_code >>> ', new_discount_code);
     
         const response = await client.post({
             type: DataType.JSON,
-            path: `/admin/api/2023-01/price_rules/${appInfo.priceRuleId}/discount_codes.json`,
+            path: `/admin/api/2023-10/price_rules/${appInfo.priceRuleId}/discount_codes.json`,
             data: {
               discount_code: {
                 code: new_discount_code[0],
@@ -127,12 +134,22 @@ discount_router.post('/', async (req, res) => {
               },
             },
           });
-        
-        console.log('discount_code', response.body.discount_code.code);
-        var insertId = saveNewDiscount(wallet_address, response.body.discount_code.code, response.body.discount_code.id, validContractAddress,  validTokenIdNum, Date.now());
+
+        const discountCode = response.body.discount_code.code;
+        const discountCodeId = response.body.discount_code.id;
+        console.log('discountCode >>> ', discountCode);
+
+        // var date_created = new Date(new Date().toLocaleString('en-US', {timeZone: 'America/New_York'}));
+        // date_created = date_created.getUTCMilliseconds();
+        var date_created = Date.now();
+        var insertId = saveNewDiscount(wallet_address, discountCode, discountCodeId, validContractAddress,  validTokenIdNum, date_created, store);
+        var expire_date = new Date(date_created + 15 * 60 * 1000);
+        var expire_date_str = expire_date.toLocaleString('en-US', {timeZone: 'America/New_York'})
+          .replace(/T/, ' ')
+          .replace(/\..+/, '');
         return res
             .status(200)
-            .json({error: null, message: "Your current discount code is " + response.body.discount_code.code, discount_code: response.body.discount_code.code});
+            .json({error: null, message: "Your current discount code is " + discountCode + "<br/>" + " Valid until " + expire_date_str, discount_code: discountCode, createdAt: date_created});
     } catch (e) {
         console.log(e);
         return res

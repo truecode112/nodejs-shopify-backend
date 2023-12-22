@@ -19,9 +19,10 @@
   },
   "homepage": "https://github.com/truecode112/nodejs-shopify-backend#readme",
   "dependencies": {
-    "@shopify/shopify-api": "^6.1.0",
-    "@thirdweb-dev/auth": "^2.0.40",
-    "@thirdweb-dev/sdk": "^3.6.10",
+    "@shopify/shopify-api": "^8.1.1",
+    "@thirdweb-dev/auth": "^4.1.19",
+    "@thirdweb-dev/chains": "^0.1.62",
+    "@thirdweb-dev/sdk": "^4.0.23",
     "@types/voucher-code-generator": "^1.1.1",
     "cors": "^2.8.5",
     "dotenv": "^16.0.3",

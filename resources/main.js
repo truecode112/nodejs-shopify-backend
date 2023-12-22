@@ -25,46 +25,6 @@ async function setBannerText(bannerText) {
   document.getElementById("sekanson-cta-text").innerHTML = bannerText;
 }
 
-async function signMessage(account) {
-  setBannerText('Please sign message to verify', false);
-  try {
-      const from = account;
-      console.log('from : ' + from);
-      const msg = `You are about to connect to slimprints.myshopify.com. \n\nThis signature will prove you are the owner of address ${account}.\n\n This action will not cost you anything.\n\nPlugin provided by Sekanson`;
-      const sign = await ethereum.request({
-          method: 'personal_sign',
-          params: [msg, from, "Random text"],
-      });
-      console.log('sign : ' + sign);
-      return sign;
-  } catch (err) {
-      console.error(err);
-      return null;
-  }
-}
-
-async function verifyMessage(account, signature) {
-  try {
-      const from = account;
-      const msg = `You are about to connect to slimprints.myshopify.com. \n\nThis signature will prove you are the owner of address ${account}.\n\n This action will not cost you anything.\n\nPlugin provided by Sekanson`;
-      const recoveredAddr = web3.eth.accounts.recover(msg, signature);
-      console.log('recoveredAddr : ' + recoveredAddr);
-
-      if (recoveredAddr.toLowerCase() === from.toLowerCase()) {
-          console.log(`Successfully ecRecovered signer as ${recoveredAddr}`);
-          return true;
-      } else {
-          console.log(
-              `Failed to verify signer when comparing ${recoveredAddr} to ${from}`,
-          );
-          return false;
-      }
-  } catch (err) {
-      return false;
-      console.error(err);
-  }
-}
-
 function refreshBanner(timeout = 3000) {
   setTimeout(() => {
     //var currentDiscountCode = getCookie('CurDiscountCode');
@@ -87,12 +47,13 @@ async function callHolder(account) {
   var sendInfo = {
     wallet_address: account,
     chain_id: data_network,
-    uid: data_plugin_id
+    uid: data_plugin_id,
+    store: document.referrer
   };
 
   $.ajax({
     type: "POST",
-    url: "http://sekanson.com/slimprints/api/discount",
+    url: "https://sekanson.com/shopify/api/discount",
     headers:{         
       'Content-Type' : 'application/json',
     },
@@ -117,22 +78,7 @@ async function callHolder(account) {
   })
 }
 
-async function getCurrentAccount() {
-  const accounts = await window.ethereum.request({
-      method: 'eth_requestAccounts'//'eth_accounts'
-  });
-  return accounts;
-}
-
-
-async function connectWallet() {
-
-  // getCurrentAccount().then((accounts) => {
-  //   console.log('currentAccount', accounts[0]);
-  // }).catch((err) => {
-  // });
-  // return;
-
+async function onClickBanner() {
   var discountCode = $("#discountCode").val();
   if (isValidDiscountCode(discountCode)) {
     navigator.clipboard.writeText(discountCode);
@@ -140,111 +86,43 @@ async function connectWallet() {
     return;
   }
 
-  /*getCurrentAccount().then((accounts) => {
-      console.log('currentAccount', accounts[0]);
-      handleAccountChanged(accounts[0]);
-  }).catch((err) => {
-
-  });*/
-
   const message = JSON.stringify({
-    type: 1
+    type: 1,
+    storeURL: $("#storeURL").val()
   });
 
   window.parent.postMessage(message, '*');
-
-/*
-
-  if (typeof web3 !== 'undefined') {
-    console.log('Web3 Detected! ' + web3.currentProvider.constructor.name)
-    window.web3 = new Web3(web3.currentProvider);
-    if (typeof window.ethereum !== 'undefined') {
-      console.log('MetaMask is installed!');
-      await getAccount();  
-      if (globalAccount == undefined) {
-        ///await getAccount();  
-      } 
-      
-      console.log('globalAccount', globalAccount);
-
-      if (globalAccount !== undefined) {
-        var signResult = await signMessage();
-        if (signResult) {
-          var verifyResult = await verifyMessage();
-          if (verifyResult) {
-            setBannerText('Verifying signature', false);
-            callHolder();
-          } else {
-            setBannerText("Verify signature failed", false);
-            globalSignature = undefined;
-            refreshBanner();
-          }
-        }
-        else {
-          setBannerText("Signature rejected by user!", false);
-          globalSignature = undefined;
-          refreshBanner();
-        }
-      }
-    } else {
-      alert('MetaMask is not installed');
-    }
-  } else {
-    console.log('No Web3 Detected... using HTTP Provider')
-    window.web3 = new Web3(new Web3.providers.HttpProvider("https://mainnet.infura.io/<APIKEY>"));
-  }
-  return;*/
-}
-
-async function handleAccountChanged(account) {
-  
-  if (typeof web3 !== 'undefined') {
-    window.web3 = new Web3(web3.currentProvider);
-    if (typeof window.ethereum !== 'undefined') {
-      console.log('handleAccountChanged', account);
-      if (account !== undefined && account !== null) {
-        var signature = await signMessage(account);
-        if (signature != null) {
-          var verifyResult = await verifyMessage(account, signature);
-          if (verifyResult) {
-            setBannerText('Verifying signature', false);
-            callHolder(account);
-          } else {
-            setBannerText("Verify signature failed", false);
-            refreshBanner();
-          }
-        }
-        else {
-          setBannerText("Signature rejected by user!", false);
-          refreshBanner();
-        }
-      }
-    } else {
-      alert('MetaMask is not installed');
-    }
-  } else {
-    console.log('No Web3 Detected... using HTTP Provider')
-    window.web3 = new Web3(new Web3.providers.HttpProvider("https://mainnet.infura.io/<APIKEY>"));
-  }
-  return;
 }
 
 window.onload = (event) => {
   const button = document.querySelector("#sekanson-banner");
-  button.addEventListener("click", connectWallet);
+  button.addEventListener("click", onClickBanner);
   window.addEventListener('message', function(event) {
-    console.log(event.origin, event.data);
-    const originURL = new URL(event.origin);
-    const storeURL = new URL($("#storeURL").val());
-    if (originURL.host == storeURL.host) {
-      const data = event.data;
-      const decoded = JSON.parse(data);
-      if (decoded.type == 2) {
-        // Account Response
-        const account = decoded.account;
-        handleAccountChanged(account);
+    // console.log(event.origin, event.data);
+    if ($("#storeURL").val() != null && $("#storeURL").val() != undefined && $("#storeURL").val() != "") {
+      const originURL = new URL(event.origin);
+      const storeURL = new URL($("#storeURL").val());
+      if (originURL.host == storeURL.host) {
+        const data = event.data;
+        const decoded = JSON.parse(data);
+        if (decoded.type == 2) {
+          // Started sign 
+          setBannerText('Please sign message to verify', false);
+        } else if (decoded.type == 3) {
+          // Verify sign success
+          setBannerText('Verifying signature', false);
+          callHolder(decoded.account);
+        } else if (decoded.type == 4) {
+          // Verify sign failed
+          setBannerText("Verify signature failed", false);
+          refreshBanner();
+        } else if (decoded.type == 5) {
+          // Sign rejected
+          setBannerText("Signature rejected by user!", false);
+          refreshBanner();
+        }
+        $("#banner_iframe").css('display', 'block');
       }
-      $("#banner_iframe").css('display', 'block');
     }
   });
   //refreshBanner(0);
