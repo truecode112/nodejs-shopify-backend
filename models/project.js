@@ -1,9 +1,9 @@
 import mysql from 'mysql';
 var pool = mysql.createPool({
     host: 'localhost',
-    user: 'alek_db',
-    password: '(&zjn$#2Z',
-    database: 'slimprints'
+    user: '',
+    password: '',
+    database: ''
 });
 
 export const createProject = async function(req) {
